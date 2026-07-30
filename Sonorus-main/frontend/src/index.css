@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg-color: #f7f6fb;
+  --bg-card: #ffffff;
+  --bg-hover: #f0edf9;
+  --primary-gold: #6c5ce7; /* Warm lavender */
+  --primary-gold-rgb: 108, 92, 231;
+  --secondary-accent: #ff7e67; /* Soft peach/coral */
+  --charcoal: #2d3436; /* Soft charcoal */
+  --text-muted: #7f8c8d;
+  --border-color: #e8e6f4;
+  --border-light: #f5f4fd;
+  
+  --font-sans: 'Quicksand', sans-serif;
+  
+  font-family: var(--font-sans);
+  background-color: var(--bg-color);
+  color: var(--charcoal);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--charcoal);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+/* Friendly Typography styling */
+h1, h2, h3, h4 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin: 0 0 1rem 0;
+  color: var(--charcoal);
+}
+
+p {
+  line-height: 1.6;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Playful Button & interactive styling */
+button {
+  background: transparent;
+  color: var(--charcoal);
+  border: 2px solid var(--border-color);
+  padding: 0.8rem 2rem;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy transition */
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.08), rgba(255, 126, 103, 0.08));
+  transform: translateY(100%);
+  transition: transform 0.4s ease;
+  z-index: -1;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--primary-gold);
+  color: var(--primary-gold);
+  background-color: var(--bg-card);
+  box-shadow: 0 8px 20px rgba(108, 92, 231, 0.12);
+  transform: translateY(-3px) scale(1.02);
+}
+
+button:hover:not(:disabled)::before {
+  transform: translateY(0);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.97);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Friendly Rounded Card container */
+.gold-card {
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2.2rem;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 10px 30px rgba(108, 92, 231, 0.04);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+}
+
+.gold-card:hover {
+  border-color: rgba(108, 92, 231, 0.25);
+  box-shadow: 0 15px 40px rgba(108, 92, 231, 0.08), 0 0 20px rgba(108, 92, 231, 0.02);
+  transform: translateY(-6px);
+}
+
+/* Breathing animation for Luxury circular ornament / mic container */
+@keyframes breathing {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(108, 92, 231, 0.1);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 35px rgba(108, 92, 231, 0.25);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(108, 92, 231, 0.1);
+  }
+}
+
+/* Listening spin animation */
+@keyframes listening-spin {
+  0% {
+    transform: rotate(0deg);
+    box-shadow: 0 0 20px rgba(46, 125, 50, 0.15);
+  }
+  100% {
+    transform: rotate(360deg);
+    box-shadow: 0 0 30px rgba(46, 125, 50, 0.3);
+  }
+}
+
+/* speaking pulse animation */
+@keyframes speaking-pulse {
+  0% {
+    transform: scale(0.98);
+    box-shadow: 0 0 25px rgba(108, 92, 231, 0.25);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 50px rgba(108, 92, 231, 0.45);
+  }
+  100% {
+    transform: scale(0.98);
+    box-shadow: 0 0 25px rgba(108, 92, 231, 0.25);
+  }
+}

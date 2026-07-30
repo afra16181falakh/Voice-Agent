@@ -1,0 +1,41 @@
+# Dependencies
+**/node_modules/
+**/bower_components/
+
+# Build outputs
+**/dist/
+**/build/
+**/out/
+
+# Python environment & cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.tox/
+
+# Local/secrets configurations
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDEs
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
