@@ -61,6 +61,22 @@ async def init_db() -> None:
             # Create all tables defined in models/schema
             await conn.run_sync(Base.metadata.create_all)
             logger.info("database_tables_created_successfully")
+
+            # create_all() only creates missing TABLES -- it never alters an
+            # already-existing table to add new columns. There's no
+            # migration framework in this project, so new columns added to
+            # an ORM model (like UserORM.google_id) need an explicit,
+            # idempotent patch here to reach tables that already existed
+            # before the column was added. Safe to run on every startup.
+            try:
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(100)"))
+                await conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"))
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE"))
+                await conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users (google_id) WHERE google_id IS NOT NULL"
+                ))
+            except Exception as e:
+                logger.warning("schema_patch_failed", error=str(e))
     except Exception as e:
         logger.error("database_initialization_failed", error=str(e))
         # Do not block app startup in local mode if PostgreSQL is not running yet,

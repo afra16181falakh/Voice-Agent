@@ -10,6 +10,42 @@ try:
 except ImportError:
     HAS_PGVECTOR = False
 
+class UserORM(Base):
+    """
+    Mobile app user accounts -- email + password, or Google sign-in.
+    Google-only accounts have no password_hash (nullable).
+    """
+    __tablename__ = "users"
+
+    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String(255), nullable=False, unique=True, index=True)
+    password_hash = Column(String(255), nullable=True)
+    google_id = Column(String(100), nullable=True, unique=True, index=True)
+    name = Column(String(200), nullable=False)
+    email_verified = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CallHistoryORM(Base):
+    """
+    Per-user record of past mobile app voice sessions, for the "Call
+    History" screen -- separate from HistorySegmentORM (which logs raw
+    per-turn transcript rows for the web app's WebSocket sessions) since
+    this is per-session, user-scoped, and stores the whole transcript as
+    one JSON blob rather than one row per utterance.
+    """
+    __tablename__ = "call_history"
+
+    id = Column(String(50), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(50), nullable=False, index=True)
+    session_id = Column(String(100), nullable=False)
+    call_type = Column(String(50), nullable=True)
+    customer_name = Column(String(200), nullable=True)
+    transcript_json = Column(Text, nullable=False, default="[]")
+    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ended_at = Column(DateTime, nullable=True)
+
+
 class HistorySegmentORM(Base):
     """
     SQLAlchemy table schema for logging conversation turn transcripts.

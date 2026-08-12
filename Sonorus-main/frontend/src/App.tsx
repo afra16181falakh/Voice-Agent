@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './App.css';
+import LandingPage from './LandingPage';
+import { API_BASE, WS_BASE } from './config';
 
 // Gemini Live output sample rate is typically 24000Hz
 const OUT_SAMPLE_RATE = 24000;
@@ -24,6 +26,39 @@ export default function App() {
   }, [conversationState]);
   const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxRetries: number } | null>(null);
 
+  // Live on-screen transcript of the conversation -- one entry per user
+  // utterance and per assistant reply, in the order the server sends them.
+  interface TranscriptEntry { id: number; role: 'user' | 'assistant'; text: string; }
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const transcriptIdRef = useRef(0);
+  const transcriptScrollerRef = useRef<HTMLDivElement | null>(null);
+  const appendTranscriptEntry = (role: 'user' | 'assistant', text: string) => {
+    if (!text.trim()) return;
+    transcriptIdRef.current += 1;
+    setTranscript(prev => [...prev, { id: transcriptIdRef.current, role, text }]);
+  };
+  useEffect(() => {
+    const el = transcriptScrollerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [transcript]);
+
+  // Outbound loan-reminder call testing -- the agent calls the customer
+  // (not the other way around), so this is a distinct session mode from
+  // the default inbound personal companion. Picked before connecting.
+  interface LoanCustomer { customer_id: string; name: string; loan_type: string; status: string; }
+  const [callMode, setCallMode] = useState<'companion' | 'loan_reminder'>('companion');
+  const [loanCustomers, setLoanCustomers] = useState<LoanCustomer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  useEffect(() => {
+    fetch(`${API_BASE}/api/loan-customers`)
+      .then(res => res.json())
+      .then((data: LoanCustomer[]) => {
+        setLoanCustomers(data);
+        if (data.length > 0) setSelectedCustomerId(data[0].customer_id);
+      })
+      .catch(() => { /* dropdown just stays empty if this fails */ });
+  }, []);
+
   // Live mic level (0-1), for an always-visible on-screen meter — so it's
   // immediately obvious whether the browser is actually picking up any
   // sound at all, without needing DevTools. Directly answers "is my mic
@@ -41,7 +76,7 @@ export default function App() {
   };
 
   // Admin Dashboard and Authentication States
-  const [view, setView] = useState<'agent' | 'admin'>('agent');
+  const [view, setView] = useState<'landing' | 'agent' | 'admin'>('landing');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
     return localStorage.getItem('admin_authenticated') === 'true';
@@ -67,16 +102,16 @@ export default function App() {
   const fetchDashboardData = async () => {
     try {
       const [overviewRes, liveRes, wellbeingRes, stressRes, convRes, aiRes, pipeRes, latRes, alertsRes, auditRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/telemetry/overview'),
-        fetch('http://127.0.0.1:8000/api/telemetry/live-sessions'),
-        fetch('http://127.0.0.1:8000/api/telemetry/wellbeing'),
-        fetch('http://127.0.0.1:8000/api/telemetry/stress'),
-        fetch('http://127.0.0.1:8000/api/telemetry/conversation'),
-        fetch('http://127.0.0.1:8000/api/telemetry/ai-performance'),
-        fetch('http://127.0.0.1:8000/api/telemetry/voice-pipeline'),
-        fetch('http://127.0.0.1:8000/api/telemetry/latency'),
-        fetch('http://127.0.0.1:8000/api/telemetry/alerts'),
-        fetch('http://127.0.0.1:8000/api/telemetry/audit-logs'),
+        fetch(`${API_BASE}/api/telemetry/overview`),
+        fetch(`${API_BASE}/api/telemetry/live-sessions`),
+        fetch(`${API_BASE}/api/telemetry/wellbeing`),
+        fetch(`${API_BASE}/api/telemetry/stress`),
+        fetch(`${API_BASE}/api/telemetry/conversation`),
+        fetch(`${API_BASE}/api/telemetry/ai-performance`),
+        fetch(`${API_BASE}/api/telemetry/voice-pipeline`),
+        fetch(`${API_BASE}/api/telemetry/latency`),
+        fetch(`${API_BASE}/api/telemetry/alerts`),
+        fetch(`${API_BASE}/api/telemetry/audit-logs`),
       ]);
 
       if (overviewRes.ok) setOverviewMetrics(await overviewRes.json());
@@ -107,7 +142,7 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/telemetry/admin/login', {
+      const response = await fetch(`${API_BASE}/api/telemetry/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: adminUsername, password: adminPassword }),
@@ -127,7 +162,7 @@ export default function App() {
 
   const handleAdminLogout = async () => {
     try {
-      await fetch('http://127.0.0.1:8000/api/telemetry/audit', {
+      await fetch(`${API_BASE}/api/telemetry/audit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'logout', details: 'Administrator logged out' }),
@@ -290,7 +325,10 @@ export default function App() {
       }
 
       // 2. Create session via REST endpoint
-      const response = await fetch('http://127.0.0.1:8000/sessions', {
+      const sessionBody = callMode === 'loan_reminder' && selectedCustomerId
+        ? { call_type: 'loan_reminder', customer_id: selectedCustomerId }
+        : {};
+      const response = await fetch(`${API_BASE}/sessions`, {
         method: 'POST',
       });
       if (!response.ok) {
@@ -311,7 +349,7 @@ export default function App() {
   };
 
   const connectWebSocket = (sessionId: string) => {
-    const wsUrl = `ws://127.0.0.1:8000/ws/${sessionId}`;
+    const wsUrl = `${WS_BASE}/ws/${sessionId}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     (window as any).ws = ws;
@@ -777,6 +815,61 @@ export default function App() {
     }
   };
 
+  // Shared across every view (landing/agent/admin) so opening it from the
+  // landing page's "Admin" button actually shows something immediately,
+  // instead of silently setting state that only became visible later after
+  // switching views — confirmed live as the exact bug being reported.
+  const loginModal = showLoginModal && (
+    <div className="login-modal-overlay">
+      <div className="login-modal-card">
+        <h2>Admin Panel Login</h2>
+        <p className="login-subtitle">Enter administrator credentials to unlock telemetry.</p>
+        <form onSubmit={handleAdminLogin}>
+          <div className="form-group">
+            <label>Username</label>
+            <input
+              type="text"
+              value={adminUsername}
+              onChange={(e) => setAdminUsername(e.target.value)}
+              required
+              placeholder="e.g. admin"
+            />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+            />
+          </div>
+          {loginError && <p className="error-text">{loginError}</p>}
+          <div className="modal-actions">
+            <button type="button" className="btn-cancel" onClick={() => setShowLoginModal(false)}>Cancel</button>
+            <button type="submit" className="btn-login">Authenticate</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  if (view === 'landing') {
+    return (
+      <>
+        <LandingPage
+          onEnterConsole={(mode) => {
+            if (mode) setCallMode(mode);
+            setView('agent');
+          }}
+          onOpenAdmin={() => setShowLoginModal(true)}
+        />
+        {loginModal}
+      </>
+    );
+  }
+
   return (
     <div className="concierge-app">
       {/* Dynamic Background Wallpaper */}
@@ -844,42 +937,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Admin Login Modal */}
-      {showLoginModal && (
-        <div className="login-modal-overlay">
-          <div className="login-modal-card">
-            <h2>Admin Panel Login</h2>
-            <p className="login-subtitle">Enter administrator credentials to unlock telemetry.</p>
-            <form onSubmit={handleAdminLogin}>
-              <div className="form-group">
-                <label>Username</label>
-                <input 
-                  type="text" 
-                  value={adminUsername} 
-                  onChange={(e) => setAdminUsername(e.target.value)} 
-                  required 
-                  placeholder="e.g. admin"
-                />
-              </div>
-              <div className="form-group">
-                <label>Password</label>
-                <input 
-                  type="password" 
-                  value={adminPassword} 
-                  onChange={(e) => setAdminPassword(e.target.value)} 
-                  required
-                  placeholder="••••••••"
-                />
-              </div>
-              {loginError && <p className="error-text">{loginError}</p>}
-              <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={() => setShowLoginModal(false)}>Cancel</button>
-                <button type="submit" className="btn-login">Authenticate</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {loginModal}
 
       {view === 'admin' && isAdminAuthenticated ? (
         // ==========================================
@@ -1040,9 +1098,12 @@ export default function App() {
                                   <circle
                                     key={em} cx="100" cy="100" r="70" fill="transparent"
                                     stroke={colors[em] || '#7f8c8d'} strokeWidth="20"
-                                    strokeDasharray={circ} strokeDashoffset={strokeOffset}
+                                    strokeDasharray={`${strokeLen} ${circ - strokeLen}`} strokeDashoffset={strokeOffset}
                                     transform="rotate(-90 100 100)"
-                                  />
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <title>{`${em.charAt(0).toUpperCase() + em.slice(1)}: ${val} (${(percentage * 100).toFixed(1)}%)`}</title>
+                                  </circle>
                                 );
                               });
                             })()}
